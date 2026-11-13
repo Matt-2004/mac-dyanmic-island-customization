@@ -274,17 +274,22 @@ final class AccessibilityNotificationSource: NotificationSource {
         }
     }
 
-    /// Closes the macOS banner shortly after Isle shows its own peek.
+    /// Closes the macOS banner as soon as it is detected, so only Isle's peek is seen.
+    /// Runs on the AX worker thread (where scans happen); retried once in case the
+    /// banner was still animating in.
     private func closeSystemBanner(_ banner: ParsedBanner) {
         guard let element = banner.element, let action = banner.closeAction else {
             FileLog.write("ax: banner has no close action")
             return
         }
-        worker.perform(after: 0.4) {
-            let result = AXUIElementPerformAction(element, action as CFString)
-            if result != .success {
-                FileLog.write("ax: closing banner failed (\(result.rawValue))")
-            }
+        let result = AXUIElementPerformAction(element, action as CFString)
+        if result == .success {
+            FileLog.write("ax: closed system banner")
+            return
+        }
+        worker.perform(after: 0.15) {
+            let retry = AXUIElementPerformAction(element, action as CFString)
+            FileLog.write(retry == .success ? "ax: closed system banner (retry)" : "ax: closing banner failed (\(retry.rawValue))")
         }
     }
 }
