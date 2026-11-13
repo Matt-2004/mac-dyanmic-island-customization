@@ -153,6 +153,22 @@ final class IslandStateStore: ObservableObject {
 
     /// Shows a peek now if nothing more important is visible; otherwise queues it.
     func present(_ item: PeekItem) {
+        // Charger plugged in / unplugged / full describe *current* state: the newest one
+        // replaces older ones instead of queueing behind them (rapid plug/unplug would
+        // otherwise replay outdated peeks one after another).
+        if item.kind == .power, case .power = item.content {
+            peekQueue.removeAll { $0.kind == .power }
+            if var active = activePeek, active.kind == .power {
+                // Same peek stays on screen (no re-open animation); its content animates.
+                active.content = item.content
+                activePeek = active
+                if !peekHeldByHover {
+                    schedulePeekDismissal(after: item.duration)
+                }
+                recompute()
+                return
+            }
+        }
         if let active = activePeek {
             if item.kind > active.kind {
                 // Pre-empt: the lower peek goes back into the queue and shows again afterwards (if still fresh).

@@ -353,3 +353,7 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
   plug-in, "AC power but not charging yet" is labelled "Charging…" (`isStartingToCharge`), and the battery is
   re-read at 0.5/1/2/3/5/8/12/15.5 s after plug-in (stops once charging is confirmed) so the real status and
   time to full replace it quickly. After 15 s a genuine pause/limit still reads "Plugged in, not charging".
+- Fix (user report: rapid plug/unplug caused bugs): each change queued its own 3 s peek, so the island
+  replayed outdated states, and a live "Charging" peek could show an unplugged reading. Now a new
+  plug/unplug/full peek updates the visible power peek in place (timer restarts, text crossfades, icon
+  animates) and replaces any queued power peek; behind a notification only the latest one waits.

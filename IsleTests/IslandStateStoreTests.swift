@@ -115,10 +115,40 @@ final class IslandStateStoreTests: XCTestCase {
         }
     }
 
+    func testRapidPlugUnplugReplacesInsteadOfQueueing() throws {
+        store.present(powerPeek(.pluggedIn))
+        let firstID = try XCTUnwrap(store.activePeek?.id)
+        store.present(powerPeek(.unplugged))
+        store.present(powerPeek(.pluggedIn))
+        store.present(powerPeek(.unplugged))
+        XCTAssertEqual(store.activePeek?.id, firstID, "same peek stays open")
+        if case .power(let event, _, _)? = store.activePeek?.content {
+            XCTAssertEqual(event, .unplugged, "shows the latest state")
+        } else {
+            XCTFail("expected a power peek")
+        }
+        store.dismissPeek()
+        XCTAssertNil(store.activePeek, "nothing outdated left in the queue")
+    }
+
+    func testOnlyLatestPowerPeekWaitsBehindNotification() {
+        store.presentPeek(notification())
+        store.present(powerPeek(.pluggedIn))
+        store.present(powerPeek(.unplugged))
+        store.dismissPeek()
+        if case .power(let event, _, _)? = store.activePeek?.content {
+            XCTAssertEqual(event, .unplugged)
+        } else {
+            XCTFail("expected the latest power peek")
+        }
+        store.dismissPeek()
+        XCTAssertNil(store.activePeek)
+    }
+
     func testQueueIsCappedAtThree() {
         store.presentPeek(notification("first"))
-        for _ in 0..<5 {
-            store.present(powerPeek())
+        for index in 0..<5 {
+            store.presentPeek(notification("queued \(index)"))
         }
         var shown = 0
         while store.activePeek != nil {

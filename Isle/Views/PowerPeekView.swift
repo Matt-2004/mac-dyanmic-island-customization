@@ -50,6 +50,10 @@ struct PowerPeekView: View {
                     .foregroundStyle(.white.opacity(0.65))
                     .lineLimit(1)
             }
+            // A replugged charger updates this peek in place: crossfade the words.
+            .contentTransition(.opacity)
+            .animation(.easeInOut(duration: 0.25), value: event)
+            .animation(.easeInOut(duration: 0.25), value: detail)
             Spacer(minLength: 8)
             Text("\(snapshot.percent)%")
                 .font(.system(size: 20, weight: .semibold).monospacedDigit())
