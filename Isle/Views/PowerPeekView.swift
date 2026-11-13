@@ -5,6 +5,8 @@ struct PowerPeekView: View {
     let event: PowerEvent
     let snapshot: PowerSnapshot
     let metrics: NotchMetrics
+    /// Plug in / unplug: the icon first shows the previous state, then animates to the new one.
+    @State private var glyphCharging: Bool?
 
     private var headline: String {
         switch event {
@@ -35,7 +37,9 @@ struct PowerPeekView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            BatteryGlyph(percent: snapshot.percent, isCharging: snapshot.isCharging, width: 34)
+            BatteryGlyph(percent: snapshot.percent, isCharging: glyphCharging ?? snapshot.isCharging, width: 34)
+                .onAppear(perform: animateChargeChange)
+                .onChange(of: snapshot.isCharging) { _, _ in glyphCharging = nil }
             VStack(alignment: .leading, spacing: 1) {
                 Text(headline)
                     .font(.system(size: 13, weight: .semibold))
@@ -55,5 +59,17 @@ struct PowerPeekView: View {
         .padding(.bottom, 8)
         .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityElement(children: .combine)
+    }
+
+    private func animateChargeChange() {
+        switch event {
+        case .pluggedIn: glyphCharging = false
+        case .unplugged: glyphCharging = true
+        case .fullyCharged, .lowBattery: return
+        }
+        // Wait until the peek has dropped open, then switch to the real state.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            glyphCharging = nil
+        }
     }
 }

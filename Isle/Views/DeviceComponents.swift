@@ -5,8 +5,15 @@ struct BatteryGlyph: View {
     let percent: Int
     let isCharging: Bool
     var width: CGFloat = 26
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var height: CGFloat { width * 0.48 }
+
+    /// Plugging in: the fill turns green while the bolt pops in with a small bounce.
+    /// Reduce Motion: a plain crossfade.
+    private var chargeAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.5, dampingFraction: 0.62)
+    }
 
     static func color(percent: Int, isCharging: Bool) -> Color {
         if isCharging { return .green }
@@ -26,14 +33,18 @@ struct BatteryGlyph: View {
                     .fill(color)
                     .padding(width * 0.07)
                     .frame(width: max(width * 0.16, width * fraction))
+                    .animation(.easeInOut(duration: 0.45), value: color)
+                    .animation(.easeInOut(duration: 0.6), value: fraction)
                 if isCharging {
                     Image(systemName: "bolt.fill")
                         .font(.system(size: height * 0.72, weight: .heavy))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.6), radius: 1)
                         .frame(maxWidth: .infinity)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.2).combined(with: .opacity))
                 }
             }
+            .animation(chargeAnimation, value: isCharging)
             .frame(width: width, height: height)
             RoundedRectangle(cornerRadius: 1)
                 .fill(Color.white.opacity(0.45))

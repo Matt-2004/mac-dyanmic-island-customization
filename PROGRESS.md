@@ -338,3 +338,9 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
 2. While holding, raise ☝️ toward the camera → VS Code opens; ✌️ → Terminal; 🖐️ → Teams.
 3. Release ⌥ without a sign → the green camera light goes off at once.
 4. Type ⌥E (é) or ⌥-click → no gesture; the camera stops immediately.
+
+## User confirmations + charging animation
+- Confirmed by user: AirPods peek, battery wing, hand gestures.
+- Charger plug-in: the battery icon now animates from normal to charging (fill fades to green, bolt pops in
+  with a small spring; crossfade with Reduce Motion). The power peek first shows the previous state, then
+  animates after it opens; unplugging animates the other way. The percent text animates its digits.

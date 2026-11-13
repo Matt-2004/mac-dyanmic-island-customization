@@ -119,6 +119,9 @@ struct BatteryStatusView: View {
                 .foregroundStyle(snapshot.percent <= 20 && !snapshot.isCharging
                                  ? BatteryGlyph.color(percent: snapshot.percent, isCharging: false)
                                  : .white.opacity(0.92))
+                .animation(.easeInOut(duration: 0.45), value: snapshot.isCharging)
+                .contentTransition(.numericText(value: Double(snapshot.percent)))
+                .animation(.easeInOut(duration: 0.3), value: snapshot.percent)
                 .lineLimit(1)
                 .fixedSize()
             BatteryGlyph(percent: snapshot.percent, isCharging: snapshot.isCharging, width: 24)
