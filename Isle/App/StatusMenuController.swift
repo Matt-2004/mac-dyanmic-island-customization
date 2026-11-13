@@ -184,6 +184,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         case .battery:
             // The battery wing comes from live power data.
             store.debugClearOverrides()
+        case .gesture:
+            store.setGestureStatus(.listening(.two))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.store.setGestureStatus(nil)
+            }
         case .compact:
             store.debugShowCompact(sample: debugPlayer.sample())
         case .expanded:

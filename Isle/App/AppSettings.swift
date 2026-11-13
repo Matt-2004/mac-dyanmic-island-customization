@@ -26,6 +26,7 @@ final class AppSettings: ObservableObject {
         static let spotifyEnabled = "spotifyEnabled"
         static let fetchMissingArtwork = "fetchMissingArtwork"
         static let hideInFullScreen = "hideInFullScreen"
+        static let gesturesEnabled = "gesturesEnabled"
         static let runAsService = "runAsService"
         static let showMenuBarIcon = "showMenuBarIcon"
     }
@@ -124,6 +125,11 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hideInFullScreen, forKey: Key.hideInFullScreen) }
     }
 
+    /// Hold left ⌥ to open apps with a hand sign (camera runs only while held).
+    @Published var gesturesEnabled: Bool {
+        didSet { defaults.set(gesturesEnabled, forKey: Key.gesturesEnabled) }
+    }
+
     /// Run as a launchd agent: start at login, restart after a crash.
     @Published var runAsService: Bool {
         didSet { defaults.set(runAsService, forKey: Key.runAsService) }
@@ -169,6 +175,7 @@ final class AppSettings: ObservableObject {
             Key.spotifyEnabled: true,
             Key.fetchMissingArtwork: true,
             Key.hideInFullScreen: true,
+            Key.gesturesEnabled: true,
             Key.runAsService: true,
             Key.showMenuBarIcon: true
         ])
@@ -191,6 +198,7 @@ final class AppSettings: ObservableObject {
         spotifyEnabled = defaults.bool(forKey: Key.spotifyEnabled)
         fetchMissingArtwork = defaults.bool(forKey: Key.fetchMissingArtwork)
         hideInFullScreen = defaults.bool(forKey: Key.hideInFullScreen)
+        gesturesEnabled = defaults.bool(forKey: Key.gesturesEnabled)
         runAsService = defaults.bool(forKey: Key.runAsService)
         showMenuBarIcon = defaults.bool(forKey: Key.showMenuBarIcon)
     }

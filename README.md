@@ -61,6 +61,7 @@ xcodegen generate && xcodebuild test -project Isle.xcodeproj -scheme Isle -desti
 |---|---|
 | **Idle** | Nothing playing (paused, stopped, or Music closed). Matches the notch, so it is invisible. |
 | **Battery** | Nothing else to show (MacBooks): battery percent and icon to the right of the notch, like the menu bar battery. Green with a bolt while charging, orange ≤ 20 %, red ≤ 10 %. Updates on IOKit power events only (no polling). Clicks pass through. Setting: Devices → *Always show battery*. |
+| **Hand gesture** | While left ⌥ Option is held: camera on, ☝️ opens VS Code, ✌️ Terminal, 🖐️ Teams. Camera off on release, on recognition, or when another key / click happens. |
 | **Compact** | Apple Music or Spotify is playing: artwork left of the notch, equalizer bars right. While charging: a bolt, or the percent and a charging ring when nothing plays. |
 | **Expanded** | Pointer rests on the compact island (hover delay, default 0.25 s) or you click it. Artwork, title, artist, scrubber, previous / play-pause / next. Collapses 0.3 s after the pointer leaves. |
 | **Notification peek** | A notification banner appears. Shows for 4 s (configurable). |
@@ -84,6 +85,7 @@ short fade instead of a spring, content crossfades, and the equalizer bars stop 
 | **Automation → Music** | Read the current track and position, control playback | Prompted the first time Music is running while Isle is open. Fix later in System Settings → Privacy & Security → Automation → Isle → Music. Reset with `tccutil reset AppleEvents com.wai.Isle`. |
 | **Accessibility** | Read notification banners drawn by Notification Center | Onboarding window at first launch, or menu bar icon → *Set Up Notifications…*. Then System Settings → Privacy & Security → Accessibility → enable Isle. |
 | **Full Disk Access** *(optional)* | Only for the usernoted fallback (off by default) | System Settings → Privacy & Security → Full Disk Access → add Isle. |
+| **Camera** | Hand gestures (only while left ⌥ is held) | Prompted the first time you hold left ⌥. Fix later in System Settings → Privacy & Security → Camera → Isle. |
 | **Bluetooth** | AirPods connect / disconnect | Prompted at first launch. If denied, *Set Up AirPods…* in the menu bar menu. |
 | **Automation → Spotify** *(optional)* | Same as Music, for Spotify | Prompted the first time Spotify plays while Isle is open. |
 | **Background item** | Run as a service | Registered automatically from `/Applications`. macOS shows a "Background Items Added" notice; if it is switched off in Login Items → *Allow in the Background*, Settings shows *Waiting for approval*. |

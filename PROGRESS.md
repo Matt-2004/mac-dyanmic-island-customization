@@ -313,3 +313,28 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
   Widget windows are now classified once (cached per window) and skipped; only the banner window is read.
 - Global mouse monitor: no Task allocation, early exit while the pointer is below the island.
 - Equalizer redraw 20 → 15 fps while music plays (nothing redraws while idle).
+
+## Hand gestures (hold left ⌥) ✅ builds + 37 tests pass; camera use awaiting user test
+
+- `GestureLauncher`: permanent monitor is `flagsChanged` only (fires on modifier changes, not typing). Left ⌥
+  (device flag 0x20) alone → camera on; release, ⌘/⌃/⇧ added, any key, or any click → camera off.
+  Key/click monitors exist only while ⌥ is held.
+- `HandGestureCamera`: built-in camera only (never iPhone Continuity Camera), 640×480 native YUV, 15 fps
+  requested from the sensor, late frames dropped, Vision capped at ~15 runs/s, one hand. A sign must hold
+  for 3 frames; then the app opens and the camera stops immediately. A press-and-release before the camera
+  starts never turns it on. Session + model are freed after 2 min unused.
+- Benchmark on this M3 (no camera): ~2 ms per frame of hand detection, ~1–2 % of one core at 15 fps,
+  model load 69 ms (4.5 s the very first time ever). Idle cost after install unchanged: 0.0–0.2 % CPU, 27 MB.
+- Signs: ☝️ index only → VS Code, ✌️ index + middle → Terminal, 🖐️ four fingers up → Teams. Classifier
+  compares tip vs PIP distance from the wrist (ratio 1.2), unit-tested with synthetic hands.
+- Island state `.gesture` (highest priority while held): green camera dot + hand on the left, the sign and
+  target app on the right; "Opening …" stays 1.2 s.
+- Settings → General → Hand gestures (toggle, mapping, camera permission status). Camera entitlement +
+  `NSCameraUsageDescription` added.
+
+### How to test
+1. Hold left ⌥ → the island shows wings with a green dot; macOS asks for camera access the first time → Allow
+   (then release and hold again).
+2. While holding, raise ☝️ toward the camera → VS Code opens; ✌️ → Terminal; 🖐️ → Teams.
+3. Release ⌥ without a sign → the green camera light goes off at once.
+4. Type ⌥E (é) or ⌥-click → no gesture; the camera stops immediately.

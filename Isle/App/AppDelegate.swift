@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowController: NotchWindowController?
     private var statusMenu: StatusMenuController?
     private let backgroundService = BackgroundService()
+    private var gestureLauncher: GestureLauncher?
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -86,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !notifications.isAccessibilityTrusted && settings.notificationsEnabled && !settings.skipAccessibilityOnboarding {
             onboarding.show()
         }
+
+        gestureLauncher = GestureLauncher(store: store, settings: settings)
 
         let windowController = NotchWindowController(store: store, settings: settings)
         windowController.show()

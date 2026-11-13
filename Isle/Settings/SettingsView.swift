@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 struct SettingsView: View {
@@ -57,6 +58,18 @@ private struct GeneralSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .onAppear { service.refresh() }
+
+            Section("Hand gestures") {
+                Toggle("Hold left ⌥ Option to open apps with a hand sign", isOn: $settings.gesturesEnabled)
+                Text("☝️ one finger → VS Code   ✌️ two fingers → Terminal   🖐️ open hand → Teams")
+                    .font(.caption)
+                Text("The camera is on only while you hold the key, and turns off as soon as a sign is recognized or you let go. Typing or clicking while holding ⌥ cancels. Frames are processed on this Mac and never saved.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent("Camera access") {
+                    CameraAccessStatusView()
+                }
+            }
 
             Section("Music") {
                 Toggle("Also follow Spotify", isOn: $settings.spotifyEnabled)
@@ -362,5 +375,28 @@ private struct AboutSettingsView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 180)
+    }
+}
+
+private struct CameraAccessStatusView: View {
+    @State private var status = AVCaptureDevice.authorizationStatus(for: .video)
+
+    var body: some View {
+        HStack {
+            switch status {
+            case .authorized:
+                Text("Allowed").foregroundStyle(.green)
+            case .notDetermined:
+                Text("Asked the first time you hold ⌥").foregroundStyle(.secondary)
+            default:
+                Text("Off").foregroundStyle(.orange)
+                Button("Open Camera Settings") {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        }
+        .onAppear { status = AVCaptureDevice.authorizationStatus(for: .video) }
     }
 }

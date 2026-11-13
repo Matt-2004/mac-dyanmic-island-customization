@@ -55,6 +55,9 @@ struct IslandRootView: View {
         case .battery:
             BatteryWingView(snapshot: store.power, metrics: metrics)
                 .transition(transition(.opacity))
+        case .gesture:
+            GestureWingView(status: store.gestureStatus, metrics: metrics)
+                .transition(transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .top))))
         case .compact:
             CompactMusicView(
                 nowPlaying: store.nowPlaying,

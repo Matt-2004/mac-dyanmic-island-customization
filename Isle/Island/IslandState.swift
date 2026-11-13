@@ -16,11 +16,13 @@ enum IslandState: String, CaseIterable, Equatable {
     case powerPeek
     /// Bluetooth audio device (AirPods) connected or disconnected.
     case airpodsPeek
+    /// Left ⌥ held: the camera is looking for a hand sign.
+    case gesture
 
     var isPeek: Bool {
         switch self {
         case .peek, .powerPeek, .airpodsPeek: return true
-        case .idle, .battery, .compact, .expanded: return false
+        case .idle, .battery, .compact, .expanded, .gesture: return false
         }
     }
 
@@ -33,6 +35,7 @@ enum IslandState: String, CaseIterable, Equatable {
         case .peek: return "Notification Peek"
         case .powerPeek: return "Power Peek"
         case .airpodsPeek: return "AirPods Peek"
+        case .gesture: return "Hand Gesture"
         }
     }
 }
@@ -55,6 +58,7 @@ enum IslandLayout {
     static let batteryWingWidth: CGFloat = 88
     /// Extra room in the compact right wing when the battery is shown next to the equalizer.
     static let compactBatteryExtra: CGFloat = 46
+    static let gestureWingWidth: CGFloat = 96
     static let peekExtraHeight: CGFloat = 64
     /// Music block (~152) plus the Devices row.
     static let expandedContentHeight: CGFloat = 186
@@ -75,6 +79,8 @@ enum IslandLayout {
             return CGSize(width: notch.width + batteryWingWidth, height: notch.height)
         case .compact:
             return CGSize(width: notch.width + compactWingWidth * 2 + (battery ? compactBatteryExtra : 0), height: notch.height)
+        case .gesture:
+            return CGSize(width: notch.width + gestureWingWidth * 2, height: notch.height)
         case .peek:
             return CGSize(
                 width: max(peekMinWidth, notch.width + 160),
@@ -104,7 +110,7 @@ enum IslandLayout {
         switch state {
         case .battery: return batteryWingWidth / 2
         case .compact: return battery ? compactBatteryExtra / 2 : 0
-        case .idle, .expanded, .peek, .powerPeek, .airpodsPeek: return 0
+        case .idle, .expanded, .peek, .powerPeek, .airpodsPeek, .gesture: return 0
         }
     }
 
@@ -124,7 +130,7 @@ enum IslandLayout {
     /// Bottom corner radius per state.
     static func bottomRadius(for state: IslandState, metrics: NotchMetrics) -> CGFloat {
         switch state {
-        case .idle, .battery, .compact: return min(10, metrics.notchSize.height / 2)
+        case .idle, .battery, .compact, .gesture: return min(10, metrics.notchSize.height / 2)
         case .peek, .powerPeek, .airpodsPeek: return 22
         case .expanded: return 30
         }
@@ -133,7 +139,7 @@ enum IslandLayout {
     /// Outward flare at the top corners that blends the island into the menu bar edge.
     static func topRadius(for state: IslandState) -> CGFloat {
         switch state {
-        case .idle, .battery, .compact: return 6
+        case .idle, .battery, .compact, .gesture: return 6
         case .peek, .powerPeek, .airpodsPeek, .expanded: return 12
         }
     }

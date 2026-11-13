@@ -51,6 +51,24 @@ final class IslandStateStore: ObservableObject {
         return nil
     }
 
+    enum GestureStatus: Equatable {
+        /// Camera on; the sign currently seen (nil = none yet).
+        case listening(HandGesture?)
+        /// Sign confirmed; its app is being opened.
+        case opening(HandGesture)
+        /// Camera unavailable / app missing.
+        case unavailable(String)
+    }
+
+    /// Non-nil while left ⌥ is held (and briefly after a sign is recognized).
+    @Published private(set) var gestureStatus: GestureStatus?
+
+    func setGestureStatus(_ status: GestureStatus?) {
+        guard status != gestureStatus else { return }
+        gestureStatus = status
+        recompute()
+    }
+
     /// Battery percent + icon to the right of the notch (MacBooks only).
     var showsBatteryWing: Bool {
         !debugSuppressMusic && settings.alwaysShowBattery && power != nil
@@ -217,7 +235,7 @@ final class IslandStateStore: ObservableObject {
         case .powerPeek, .airpodsPeek:
             dismissPeek()
             return
-        case .idle, .battery:
+        case .idle, .battery, .gesture:
             break
         }
         recompute()
@@ -321,7 +339,10 @@ final class IslandStateStore: ObservableObject {
         let charging = showsChargingIndicator && !batteryWing
         let canExpand = music != nil || charging
         let newState: IslandState
-        if let peek = activePeek {
+        if gestureStatus != nil {
+            // The user is deliberately holding ⌥: show that above everything else.
+            newState = .gesture
+        } else if let peek = activePeek {
             newState = peek.islandState
         } else if canExpand, expandRequested || pinnedExpanded {
             // Stays expanded while the pointer is on it, even if the user just paused.

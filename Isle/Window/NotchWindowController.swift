@@ -117,7 +117,7 @@ final class NotchWindowController {
 
     /// Hides the island over full-screen apps (setting), but always lets peeks through.
     private func updateVisibility() {
-        let hide = settings.hideInFullScreen && isFullScreenAppActive && !store.state.isPeek
+        let hide = settings.hideInFullScreen && isFullScreenAppActive && !store.state.isPeek && store.state != .gesture
         let target: CGFloat = hide ? 0 : 1
         guard panel.alphaValue != target else { return }
         NSAnimationContext.runAnimationGroup { context in
@@ -190,7 +190,7 @@ final class NotchWindowController {
         let inside = rect.insetBy(dx: -2, dy: -2).contains(location)
         let hidden = panel.alphaValue < 0.5
         // The battery wing is display-only: clicks pass through to the menu bar.
-        let interactive = inside && state != .idle && state != .battery && !hidden
+        let interactive = inside && state != .idle && state != .battery && state != .gesture && !hidden
         if panel.ignoresMouseEvents == interactive {
             panel.ignoresMouseEvents = !interactive
         }

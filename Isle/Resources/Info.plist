@@ -30,6 +30,8 @@
 	<string>Isle controls Apple Music and reads the current track so it can show playback in the notch.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Isle shows when your AirPods connect or disconnect and displays their battery levels in the notch.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Isle uses the camera only while you hold the left Option key, to recognize a hand sign and open the matching app. Frames stay on this Mac and are never saved.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
 </dict>
