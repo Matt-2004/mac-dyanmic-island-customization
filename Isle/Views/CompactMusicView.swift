@@ -7,6 +7,8 @@ struct CompactMusicView: View {
     let nowPlaying: NowPlaying?
     let power: PowerSnapshot?
     let showsCharging: Bool
+    /// Battery wing on: percent + icon after the equalizer (replaces the charging bolt).
+    let showsBattery: Bool
     let metrics: NotchMetrics
 
     var body: some View {
@@ -20,7 +22,8 @@ struct CompactMusicView: View {
             Spacer(minLength: metrics.notchSize.width)
             rightWing(artSize: artSize)
                 .padding(.trailing, inset + 12)
-                .frame(width: IslandLayout.compactWingWidth, alignment: .trailing)
+                .frame(width: IslandLayout.compactWingWidth + (showsBattery ? IslandLayout.compactBatteryExtra : 0),
+                       alignment: .trailing)
         }
         .frame(height: height)
         .accessibilityElement(children: .ignore)
@@ -41,6 +44,20 @@ struct CompactMusicView: View {
     @ViewBuilder
     private func rightWing(artSize: CGFloat) -> some View {
         let musicPlaying = nowPlaying?.isPlaying ?? false
+        HStack(spacing: 8) {
+            if showsBattery, let power {
+                if let nowPlaying, musicPlaying {
+                    PlayingIndicator(isPlaying: true, color: nowPlaying.accent, height: artSize * 0.7)
+                }
+                BatteryStatusView(snapshot: power)
+            } else {
+                chargingAndEqualizer(artSize: artSize, musicPlaying: musicPlaying)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func chargingAndEqualizer(artSize: CGFloat, musicPlaying: Bool) -> some View {
         HStack(spacing: 6) {
             if showsCharging {
                 if musicPlaying {
@@ -62,7 +79,9 @@ struct CompactMusicView: View {
         if let nowPlaying, nowPlaying.isPlaying {
             parts.append("\(nowPlaying.title) by \(nowPlaying.artist)")
         }
-        if showsCharging, let power {
+        if showsBattery, let power {
+            parts.append("Battery \(power.percent) percent\(power.isCharging ? ", charging" : "")")
+        } else if showsCharging, let power {
             parts.append("Charging, \(power.percent) percent")
         }
         return parts.joined(separator: ". ")
@@ -86,5 +105,42 @@ struct ChargingRing: View {
                 .foregroundStyle(.green)
         }
         .frame(width: diameter, height: diameter)
+    }
+}
+
+/// "87%" plus a battery icon, like the macOS menu bar battery.
+struct BatteryStatusView: View {
+    let snapshot: PowerSnapshot
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text("\(snapshot.percent)%")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .foregroundStyle(snapshot.percent <= 20 && !snapshot.isCharging
+                                 ? BatteryGlyph.color(percent: snapshot.percent, isCharging: false)
+                                 : .white.opacity(0.92))
+                .lineLimit(1)
+                .fixedSize()
+            BatteryGlyph(percent: snapshot.percent, isCharging: snapshot.isCharging, width: 24)
+        }
+    }
+}
+
+/// The `.battery` state: only a right-hand wing, the left edge stays on the notch.
+struct BatteryWingView: View {
+    let snapshot: PowerSnapshot?
+    let metrics: NotchMetrics
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: metrics.notchSize.width)
+            if let snapshot {
+                BatteryStatusView(snapshot: snapshot)
+                    .padding(.trailing, IslandLayout.topRadius(for: .battery) + 10)
+            }
+        }
+        .frame(height: metrics.notchSize.height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(snapshot.map { "Battery \($0.percent) percent\($0.isCharging ? ", charging" : "")" } ?? "")
     }
 }

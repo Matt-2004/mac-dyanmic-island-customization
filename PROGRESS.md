@@ -288,3 +288,14 @@ User request: run Isle like a built-in macOS service instead of an app you have 
    then open Isle from Spotlight → Settings appears.
 4. *Quit Isle* → it stays off until next login. Restart now with
    `launchctl kickstart gui/$(id -u)/com.wai.Isle.agent`.
+
+## Battery wing ✅ builds + 32 tests pass; visuals awaiting user check
+
+User request: hide the macOS menu bar battery and always show battery % + icon right of the notch.
+- New `.battery` state (replaces idle when the Mac has a battery and *Always show battery* is on, default on).
+  Grows only to the right (`IslandLayout.centerOffset`), left edge stays on the notch; display-only, clicks pass through.
+- Compact with music: equalizer then "87% ▭" in the right wing (wing widened by 46 pt). The old
+  compact charging indicator is used only when the battery wing is off.
+- Colors: white; green + bolt while charging; orange ≤ 20 %; red ≤ 10 %.
+- Updates only on `IOPSNotificationCreateRunLoopSource` callbacks; no timers or animation while idle.
+- To hide the macOS battery: System Settings → Control Center → Battery → Don't Show in Menu Bar.

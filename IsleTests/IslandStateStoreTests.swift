@@ -49,11 +49,36 @@ final class IslandStateStoreTests: XCTestCase {
     }
 
     func testChargingShowsCompactOnlyWhenEnabled() {
+        settings.alwaysShowBattery = false
         store.updatePower(power(charging: true))
         XCTAssertEqual(store.state, .compact)
         settings.chargingIndicatorEnabled = false
         store.updatePower(power(charging: true, percent: 51))
         XCTAssertEqual(store.state, .idle)
+    }
+
+    func testBatteryWingWhenNothingElseShows() {
+        store.updatePower(power(charging: false, percent: 64))
+        XCTAssertEqual(store.state, .battery)
+        store.updatePower(power(charging: true, percent: 65))
+        XCTAssertEqual(store.state, .battery, "charging is shown in the battery wing, not compact")
+        store.updateLiveNowPlaying(track(playing: true))
+        XCTAssertEqual(store.state, .compact)
+        store.updateLiveNowPlaying(track(playing: false))
+        XCTAssertEqual(store.state, .battery)
+        store.presentPeek(notification())
+        XCTAssertEqual(store.state, .peek)
+        store.dismissPeek()
+        XCTAssertEqual(store.state, .battery, "peek returns to the battery wing")
+    }
+
+    func testBatteryWingGrowsOnlyToTheRight() {
+        let metrics = NotchMetrics(notchSize: CGSize(width: 200, height: 32), hasNotch: true)
+        let size = IslandLayout.size(for: .battery, metrics: metrics, battery: true)
+        let offset = IslandLayout.centerOffset(for: .battery, metrics: metrics, battery: true)
+        XCTAssertEqual(offset - size.width / 2, -metrics.notchSize.width / 2, "left edge stays on the notch")
+        let panel = IslandLayout.panelSize(metrics: metrics)
+        XCTAssertGreaterThanOrEqual(panel.width / 2, offset + size.width / 2, "panel contains the shifted island")
     }
 
     func testNotificationPreemptsAirPodsWhichIsRestored() {

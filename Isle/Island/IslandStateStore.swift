@@ -51,6 +51,11 @@ final class IslandStateStore: ObservableObject {
         return nil
     }
 
+    /// Battery percent + icon to the right of the notch (MacBooks only).
+    var showsBatteryWing: Bool {
+        !debugSuppressMusic && settings.alwaysShowBattery && power != nil
+    }
+
     /// True while the compact island shows the charging indicator.
     var showsChargingIndicator: Bool {
         !debugSuppressMusic && settings.chargingIndicatorEnabled && (power?.isCharging ?? false)
@@ -73,9 +78,14 @@ final class IslandStateStore: ObservableObject {
     init(settings: AppSettings) {
         self.settings = settings
         settings.$chargingIndicatorEnabled
-            .dropFirst()
+            .merge(with: settings.$alwaysShowBattery)
+            .dropFirst(2)
             .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.recompute() }
+                DispatchQueue.main.async {
+                    // Geometry can change without a state change (compact gains/loses the battery).
+                    self?.objectWillChange.send()
+                    self?.recompute()
+                }
             }
             .store(in: &cancellables)
     }
@@ -207,7 +217,7 @@ final class IslandStateStore: ObservableObject {
         case .powerPeek, .airpodsPeek:
             dismissPeek()
             return
-        case .idle:
+        case .idle, .battery:
             break
         }
         recompute()
@@ -306,7 +316,9 @@ final class IslandStateStore: ObservableObject {
         }
 
         let isPlaying = music?.isPlaying ?? false
-        let charging = showsChargingIndicator
+        let batteryWing = showsBatteryWing
+        // With the battery wing on, charging is shown there instead of in compact wings.
+        let charging = showsChargingIndicator && !batteryWing
         let canExpand = music != nil || charging
         let newState: IslandState
         if let peek = activePeek {
@@ -316,6 +328,8 @@ final class IslandStateStore: ObservableObject {
             newState = .expanded
         } else if isPlaying || charging {
             newState = .compact
+        } else if batteryWing {
+            newState = .battery
         } else {
             newState = .idle
         }

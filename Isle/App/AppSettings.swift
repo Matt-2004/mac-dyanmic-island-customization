@@ -18,6 +18,7 @@ final class AppSettings: ObservableObject {
         static let chargingPeekEnabled = "chargingPeekEnabled"
         static let lowBatteryAlertsEnabled = "lowBatteryAlertsEnabled"
         static let chargingIndicatorEnabled = "chargingIndicatorEnabled"
+        static let alwaysShowBattery = "alwaysShowBattery"
         static let airpodsPeekEnabled = "airpodsPeekEnabled"
         static let bluetoothScope = "bluetoothScope"
         static let skipBluetoothOnboarding = "skipBluetoothOnboarding"
@@ -83,6 +84,11 @@ final class AppSettings: ObservableObject {
     /// Show the compact island with a bolt while charging.
     @Published var chargingIndicatorEnabled: Bool {
         didSet { defaults.set(chargingIndicatorEnabled, forKey: Key.chargingIndicatorEnabled) }
+    }
+
+    /// Battery percent and icon always shown to the right of the notch (replaces the menu bar battery).
+    @Published var alwaysShowBattery: Bool {
+        didSet { defaults.set(alwaysShowBattery, forKey: Key.alwaysShowBattery) }
     }
 
     /// Peek when AirPods (or other audio devices) connect / disconnect.
@@ -155,6 +161,7 @@ final class AppSettings: ObservableObject {
             Key.chargingPeekEnabled: true,
             Key.lowBatteryAlertsEnabled: true,
             Key.chargingIndicatorEnabled: true,
+            Key.alwaysShowBattery: true,
             Key.airpodsPeekEnabled: true,
             Key.bluetoothScope: BluetoothScope.airpodsOnly.rawValue,
             Key.skipBluetoothOnboarding: false,
@@ -176,6 +183,7 @@ final class AppSettings: ObservableObject {
         chargingPeekEnabled = defaults.bool(forKey: Key.chargingPeekEnabled)
         lowBatteryAlertsEnabled = defaults.bool(forKey: Key.lowBatteryAlertsEnabled)
         chargingIndicatorEnabled = defaults.bool(forKey: Key.chargingIndicatorEnabled)
+        alwaysShowBattery = defaults.bool(forKey: Key.alwaysShowBattery)
         airpodsPeekEnabled = defaults.bool(forKey: Key.airpodsPeekEnabled)
         bluetoothScope = BluetoothScope(rawValue: defaults.string(forKey: Key.bluetoothScope) ?? "") ?? .airpodsOnly
         skipBluetoothOnboarding = defaults.bool(forKey: Key.skipBluetoothOnboarding)

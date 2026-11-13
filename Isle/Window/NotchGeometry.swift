@@ -47,11 +47,12 @@ enum NotchGeometry {
     }
 
     /// Island rect in screen coordinates for hit testing.
-    static func islandRect(for state: IslandState, screen: NSScreen, metrics: NotchMetrics) -> NSRect {
-        let size = IslandLayout.size(for: state, metrics: metrics)
+    static func islandRect(for state: IslandState, screen: NSScreen, metrics: NotchMetrics, battery: Bool = false) -> NSRect {
+        let size = IslandLayout.size(for: state, metrics: metrics, battery: battery)
+        let offset = IslandLayout.centerOffset(for: state, metrics: metrics, battery: battery)
         let frame = screen.frame
         return NSRect(
-            x: frame.midX - size.width / 2,
+            x: frame.midX + offset - size.width / 2,
             y: frame.maxY - size.height,
             width: size.width,
             height: size.height

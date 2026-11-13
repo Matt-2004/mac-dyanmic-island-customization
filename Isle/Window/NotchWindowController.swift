@@ -176,11 +176,12 @@ final class NotchWindowController {
     private func updateMouseHandling(at location: NSPoint) {
         guard let screen else { return }
         let state = store.state
-        let rect = NotchGeometry.islandRect(for: state, screen: screen, metrics: store.metrics)
+        let rect = NotchGeometry.islandRect(for: state, screen: screen, metrics: store.metrics, battery: store.showsBatteryWing)
         // Small tolerance so the top edge (y == screen max) counts as inside.
         let inside = rect.insetBy(dx: -2, dy: -2).contains(location)
         let hidden = panel.alphaValue < 0.5
-        let interactive = inside && state != .idle && !hidden
+        // The battery wing is display-only: clicks pass through to the menu bar.
+        let interactive = inside && state != .idle && state != .battery && !hidden
         if panel.ignoresMouseEvents == interactive {
             panel.ignoresMouseEvents = !interactive
         }

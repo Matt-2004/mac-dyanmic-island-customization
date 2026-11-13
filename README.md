@@ -60,6 +60,7 @@ xcodegen generate && xcodebuild test -project Isle.xcodeproj -scheme Isle -desti
 | Island state | When |
 |---|---|
 | **Idle** | Nothing playing (paused, stopped, or Music closed). Matches the notch, so it is invisible. |
+| **Battery** | Nothing else to show (MacBooks): battery percent and icon to the right of the notch, like the menu bar battery. Green with a bolt while charging, orange ≤ 20 %, red ≤ 10 %. Updates on IOKit power events only (no polling). Clicks pass through. Setting: Devices → *Always show battery*. |
 | **Compact** | Apple Music or Spotify is playing: artwork left of the notch, equalizer bars right. While charging: a bolt, or the percent and a charging ring when nothing plays. |
 | **Expanded** | Pointer rests on the compact island (hover delay, default 0.25 s) or you click it. Artwork, title, artist, scrubber, previous / play-pause / next. Collapses 0.3 s after the pointer leaves. |
 | **Notification peek** | A notification banner appears. Shows for 4 s (configurable). |

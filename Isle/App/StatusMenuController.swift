@@ -181,6 +181,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         switch state {
         case .idle:
             store.debugShowIdle()
+        case .battery:
+            // The battery wing comes from live power data.
+            store.debugClearOverrides()
         case .compact:
             store.debugShowCompact(sample: debugPlayer.sample())
         case .expanded:

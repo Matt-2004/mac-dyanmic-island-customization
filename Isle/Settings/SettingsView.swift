@@ -241,7 +241,9 @@ private struct DevicesSettingsView: View {
             Section("Mac battery") {
                 Toggle("Peek when charger is plugged in / unplugged / full", isOn: $settings.chargingPeekEnabled)
                 Toggle("Low battery alerts (20% and 10%)", isOn: $settings.lowBatteryAlertsEnabled)
+                Toggle("Always show battery to the right of the notch", isOn: $settings.alwaysShowBattery)
                 Toggle("Show charging indicator next to the notch", isOn: $settings.chargingIndicatorEnabled)
+                    .disabled(settings.alwaysShowBattery)
                 LabeledContent("Now") {
                     if let snapshot = power.snapshot {
                         Text("\(snapshot.percent)% · \(snapshot.statusText)")

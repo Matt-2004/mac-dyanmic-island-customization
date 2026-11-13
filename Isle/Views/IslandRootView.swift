@@ -18,7 +18,9 @@ struct IslandRootView: View {
     var body: some View {
         let state = store.state
         let metrics = store.metrics
-        let size = IslandLayout.size(for: state, metrics: metrics)
+        let battery = store.showsBatteryWing
+        let size = IslandLayout.size(for: state, metrics: metrics, battery: battery)
+        let offset = IslandLayout.centerOffset(for: state, metrics: metrics, battery: battery)
         let shape = NotchShape(
             topRadius: IslandLayout.topRadius(for: state),
             bottomRadius: IslandLayout.bottomRadius(for: state, metrics: metrics)
@@ -36,6 +38,7 @@ struct IslandRootView: View {
             .opacity(size.height > 0 ? 1 : 0)
             .shadow(color: .black.opacity(state == .expanded || state.isPeek ? 0.45 : 0), radius: 12, y: 4)
             .onTapGesture { store.handleClick() }
+            .offset(x: offset)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -49,11 +52,15 @@ struct IslandRootView: View {
         switch state {
         case .idle:
             Color.clear
+        case .battery:
+            BatteryWingView(snapshot: store.power, metrics: metrics)
+                .transition(transition(.opacity))
         case .compact:
             CompactMusicView(
                 nowPlaying: store.nowPlaying,
                 power: store.power,
                 showsCharging: store.showsChargingIndicator,
+                showsBattery: store.showsBatteryWing,
                 metrics: metrics
             )
             .transition(transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .top))))
