@@ -5,7 +5,8 @@ import Vision
 /// - The camera runs only between `start()` and `stop()`.
 /// - 640×480, the camera's native YUV format (no color conversion), late frames dropped,
 ///   and Vision is run at most ~15 times per second on one hand.
-/// - The session and the Vision model are released after 2 minutes without use.
+/// - The session is configured once (camera stays off while it isn't running) so a press only
+///   has to power the sensor on; the Vision model is released after 2 minutes without use.
 ///
 /// Callbacks arrive on the main thread.
 final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -25,8 +26,8 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     private static let minFrameInterval: TimeInterval = 1.0 / 15.0
     private static let releaseAfter: TimeInterval = 120
 
-    private let sessionQueue = DispatchQueue(label: "com.wai.Isle.camera", qos: .userInitiated)
-    private let videoQueue = DispatchQueue(label: "com.wai.Isle.vision", qos: .userInitiated)
+    private let sessionQueue = DispatchQueue(label: "com.wai.Isle.camera", qos: .userInteractive)
+    private let videoQueue = DispatchQueue(label: "com.wai.Isle.vision", qos: .userInteractive)
     private let lock = NSLock()
     private var _isActive = false
     private var _generation = 0
@@ -38,6 +39,8 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     // videoQueue only
     private var request: VNDetectHumanHandPoseRequest?
     private var frameGeneration = -1
+    private var startedAt: TimeInterval = 0
+    private var loggedFirstFrame = false
     private var lastCandidate: HandGesture?
     private var streak = 0
     private var confirmed = false
@@ -49,7 +52,17 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         return (_isActive, _generation)
     }
 
+    /// Configures the session ahead of time (no camera power, no light) so the first press is fast.
+    func prepare() {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        sessionQueue.async { [weak self] in
+            guard let self, self.session == nil else { return }
+            self.session = try? self.makeSession()
+        }
+    }
+
     func start() {
+        let requestedAt = ProcessInfo.processInfo.systemUptime
         lock.lock()
         _isActive = true
         _generation += 1
@@ -58,12 +71,12 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            sessionQueue.async { [weak self] in self?.startSession(generation: generation) }
+            sessionQueue.async { [weak self] in self?.startSession(generation: generation, requestedAt: requestedAt) }
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 guard let self else { return }
                 if granted {
-                    self.sessionQueue.async { self.startSession(generation: generation) }
+                    self.sessionQueue.async { self.startSession(generation: generation, requestedAt: requestedAt) }
                 } else {
                     self.fail(.denied)
                 }
@@ -76,13 +89,18 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     }
 
     func stop() {
+        let requestedAt = ProcessInfo.processInfo.systemUptime
         lock.lock()
         _isActive = false
         lock.unlock()
         sessionQueue.async { [weak self] in
             guard let self else { return }
             if let session = self.session, session.isRunning {
+                let begin = ProcessInfo.processInfo.systemUptime
                 session.stopRunning()
+                let end = ProcessInfo.processInfo.systemUptime
+                FileLog.write(String(format: "camera: stop waited %.0f ms in queue, stopRunning %.0f ms",
+                                     (begin - requestedAt) * 1000, (end - begin) * 1000))
             }
             self.scheduleRelease()
         }
@@ -90,7 +108,7 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
     // MARK: Session (sessionQueue)
 
-    private func startSession(generation: Int) {
+    private func startSession(generation: Int, requestedAt: TimeInterval) {
         // Pressed and released before we got here: don't turn the camera on at all.
         let current = state
         guard current.active, current.generation == generation else { return }
@@ -108,8 +126,12 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
             }
         }
         guard let session, !session.isRunning else { return }
-        videoQueue.async { [weak self] in self?.resetTracking(generation: generation) }
+        videoQueue.async { [weak self] in self?.resetTracking(generation: generation, requestedAt: requestedAt) }
+        let begin = ProcessInfo.processInfo.systemUptime
         session.startRunning()
+        let end = ProcessInfo.processInfo.systemUptime
+        FileLog.write(String(format: "camera: start setup %.0f ms, startRunning %.0f ms",
+                             (begin - requestedAt) * 1000, (end - begin) * 1000))
         // Released while the camera was starting up.
         if !state.active {
             session.stopRunning()
@@ -158,9 +180,10 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
     private func scheduleRelease() {
         releaseWork?.cancel()
+        // Only the Vision model is freed; the configured session costs little and keeps the
+        // next press fast.
         let work = DispatchWorkItem { [weak self] in
             guard let self, !self.state.active else { return }
-            self.session = nil
             self.videoQueue.async { self.request = nil }
         }
         releaseWork = work
@@ -173,8 +196,10 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
     // MARK: Frames (videoQueue)
 
-    private func resetTracking(generation: Int) {
+    private func resetTracking(generation: Int, requestedAt: TimeInterval) {
         frameGeneration = generation
+        startedAt = requestedAt
+        loggedFirstFrame = false
         lastCandidate = nil
         streak = 0
         confirmed = false
@@ -185,6 +210,10 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         let current = state
         guard current.active, current.generation == frameGeneration, !confirmed else { return }
         let now = ProcessInfo.processInfo.systemUptime
+        if !loggedFirstFrame {
+            loggedFirstFrame = true
+            FileLog.write(String(format: "camera: first frame %.0f ms after key press", (now - startedAt) * 1000))
+        }
         guard now - lastProcessed >= Self.minFrameInterval * 0.9 else { return }
         lastProcessed = now
 
@@ -207,6 +236,7 @@ final class HandGestureCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         }
         if let gesture, streak >= Self.requiredStreak {
             confirmed = true
+            FileLog.write(String(format: "camera: %@ confirmed %.0f ms after key press", gesture.rawValue, (now - startedAt) * 1000))
             DispatchQueue.main.async { [weak self] in self?.onConfirmed?(gesture) }
         }
     }

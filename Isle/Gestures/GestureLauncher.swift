@@ -43,6 +43,7 @@ final class GestureLauncher {
 
     private func start() {
         guard flagMonitors.isEmpty else { return }
+        camera.prepare()
         if let global = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: { [weak self] event in
             MainActor.assumeIsolated { self?.flagsChanged(event) }
         }) {
@@ -148,8 +149,8 @@ final class GestureLauncher {
 
     private func showBriefly(_ status: IslandStateStore.GestureStatus) {
         store.setGestureStatus(status)
-        feedbackUntil = Date().addingTimeInterval(1.2)
-        scheduleClear(after: 1.2)
+        feedbackUntil = Date().addingTimeInterval(0.5)
+        scheduleClear(after: 0.5)
     }
 
     /// Clears the feedback later, unless ⌥ is held again by then (a new attempt owns the island).
