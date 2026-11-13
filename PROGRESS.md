@@ -258,7 +258,7 @@ or `xcodegen generate && open Isle.xcodeproj`, then Run (⌘R).
 - Focus / DND: nothing is drawn, so Accessibility sees nothing (use the usernoted fallback).
 - AirPods battery freshness is limited by how often macOS updates `system_profiler`.
 
-## Background service ✅ verified on this Mac (launchd restart + reinstall); visuals unchanged
+## Background service ✅ confirmed by user (starts by itself after restart + login)
 
 User request: run Isle like a built-in macOS service instead of an app you have to open.
 
