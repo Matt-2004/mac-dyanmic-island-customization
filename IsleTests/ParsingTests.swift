@@ -60,6 +60,13 @@ final class PowerTests: XCTestCase {
                                  minutesToFull: nil, minutesToEmpty: nil)
         XCTAssertEqual(snapshot.statusText, "Plugged in, not charging")
         XCTAssertEqual(PowerSnapshot.duration(45), "45m")
+        // Charger connected but macOS hasn't started charging yet: still drawn as charging.
+        let negotiating = PowerSnapshot(percent: 77, isCharging: false, isPluggedIn: true, isCharged: false,
+                                        minutesToFull: nil, minutesToEmpty: nil)
+        XCTAssertTrue(negotiating.showsChargingStyle)
+        XCTAssertEqual(negotiating.chargeDescription, ", plugged in")
+        XCTAssertFalse(PowerSnapshot(percent: 77, isCharging: false, isPluggedIn: false, isCharged: false,
+                                     minutesToFull: nil, minutesToEmpty: 300).showsChargingStyle)
         XCTAssertEqual(PowerSnapshot.duration(120), "2h")
     }
 

@@ -32,14 +32,15 @@ struct PowerPeekView: View {
         if case .lowBattery = event {
             return BatteryGlyph.color(percent: snapshot.percent, isCharging: false)
         }
-        return snapshot.isCharging || event == .fullyCharged ? .green : .white
+        let charging = glyphCharging ?? snapshot.showsChargingStyle
+        return charging || event == .fullyCharged ? .green : .white
     }
 
     var body: some View {
         HStack(spacing: 12) {
-            BatteryGlyph(percent: snapshot.percent, isCharging: glyphCharging ?? snapshot.isCharging, width: 34)
+            BatteryGlyph(percent: snapshot.percent, isCharging: glyphCharging ?? snapshot.showsChargingStyle, width: 34)
                 .onAppear(perform: animateChargeChange)
-                .onChange(of: snapshot.isCharging) { _, _ in glyphCharging = nil }
+                .onChange(of: snapshot.showsChargingStyle) { _, _ in glyphCharging = nil }
             VStack(alignment: .leading, spacing: 1) {
                 Text(headline)
                     .font(.system(size: 13, weight: .semibold))
@@ -53,6 +54,7 @@ struct PowerPeekView: View {
             Text("\(snapshot.percent)%")
                 .font(.system(size: 20, weight: .semibold).monospacedDigit())
                 .foregroundStyle(percentColor)
+                .animation(.easeInOut(duration: 0.4), value: glyphCharging)
         }
         .padding(.horizontal, IslandLayout.topRadius(for: .powerPeek) + 16)
         .padding(.top, metrics.notchSize.height + 4)
@@ -67,8 +69,9 @@ struct PowerPeekView: View {
         case .unplugged: glyphCharging = true
         case .fullyCharged, .lowBattery: return
         }
-        // Wait until the peek has dropped open, then switch to the real state.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        // Wait until the peek has finished dropping open (spring ≈ 0.45 s), then switch to
+        // the real state so the change is seen on its own rather than mid-morph.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             glyphCharging = nil
         }
     }

@@ -11,6 +11,16 @@ struct PowerSnapshot: Equatable {
     /// nil while calculating, or when on AC power.
     var minutesToEmpty: Int?
 
+    /// Draw the battery as charging (green + bolt) as soon as the charger is connected, like
+    /// the macOS menu bar. macOS reports "plugged in" at once but "charging" only a few
+    /// seconds later (and never while charging is paused or limited).
+    var showsChargingStyle: Bool { isPluggedIn }
+
+    /// ", charging" / ", plugged in" / "" for accessibility labels.
+    var chargeDescription: String {
+        isCharging ? ", charging" : (isPluggedIn ? ", plugged in" : "")
+    }
+
     /// "Charging, 1h 20m to full", "Fully charged", "Unplugged", …
     var statusText: String {
         if isPluggedIn {

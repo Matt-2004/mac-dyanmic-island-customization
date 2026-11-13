@@ -80,7 +80,7 @@ struct CompactMusicView: View {
             parts.append("\(nowPlaying.title) by \(nowPlaying.artist)")
         }
         if showsBattery, let power {
-            parts.append("Battery \(power.percent) percent\(power.isCharging ? ", charging" : "")")
+            parts.append("Battery \(power.percent) percent\(power.chargeDescription)")
         } else if showsCharging, let power {
             parts.append("Charging, \(power.percent) percent")
         }
@@ -116,15 +116,15 @@ struct BatteryStatusView: View {
         HStack(spacing: 5) {
             Text("\(snapshot.percent)%")
                 .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                .foregroundStyle(snapshot.percent <= 20 && !snapshot.isCharging
+                .foregroundStyle(snapshot.percent <= 20 && !snapshot.showsChargingStyle
                                  ? BatteryGlyph.color(percent: snapshot.percent, isCharging: false)
                                  : .white.opacity(0.92))
-                .animation(.easeInOut(duration: 0.45), value: snapshot.isCharging)
+                .animation(.easeInOut(duration: 0.4), value: snapshot.showsChargingStyle)
                 .contentTransition(.numericText(value: Double(snapshot.percent)))
                 .animation(.easeInOut(duration: 0.3), value: snapshot.percent)
                 .lineLimit(1)
                 .fixedSize()
-            BatteryGlyph(percent: snapshot.percent, isCharging: snapshot.isCharging, width: 24)
+            BatteryGlyph(percent: snapshot.percent, isCharging: snapshot.showsChargingStyle, width: 24)
         }
     }
 }
@@ -144,6 +144,6 @@ struct BatteryWingView: View {
         }
         .frame(height: metrics.notchSize.height)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(snapshot.map { "Battery \($0.percent) percent\($0.isCharging ? ", charging" : "")" } ?? "")
+        .accessibilityLabel(snapshot.map { "Battery \($0.percent) percent\($0.chargeDescription)" } ?? "")
     }
 }

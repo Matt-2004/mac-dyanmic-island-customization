@@ -344,3 +344,8 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
 - Charger plug-in: the battery icon now animates from normal to charging (fill fades to green, bolt pops in
   with a small spring; crossfade with Reduce Motion). The power peek first shows the previous state, then
   animates after it opens; unplugging animates the other way. The percent text animates its digits.
+- Fix (user report: "charging still shows as normal"): macOS reports the charger as connected at once but
+  `IsCharging` only a few seconds later (or never while charging is paused/limited). The battery icon now
+  uses `isPluggedIn` (`PowerSnapshot.showsChargingStyle`), like the menu bar battery.
+- Smoother: the bolt stays in the view tree and animates scale/opacity (spring in, 0.28 s ease-out away, no
+  bounce on unplug); the peek waits 0.5 s (until it has finished opening) before animating the change.

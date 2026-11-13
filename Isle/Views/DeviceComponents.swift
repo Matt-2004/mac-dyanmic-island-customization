@@ -9,10 +9,11 @@ struct BatteryGlyph: View {
 
     private var height: CGFloat { width * 0.48 }
 
-    /// Plugging in: the fill turns green while the bolt pops in with a small bounce.
-    /// Reduce Motion: a plain crossfade.
-    private var chargeAnimation: Animation {
-        reduceMotion ? .easeInOut(duration: 0.25) : .spring(response: 0.5, dampingFraction: 0.62)
+    /// Plugging in: the bolt pops in with a small spring. Unplugging: it shrinks away with a
+    /// short ease-out (no bounce). Reduce Motion: a plain fade both ways.
+    private var boltAnimation: Animation {
+        if reduceMotion { return .easeInOut(duration: 0.25) }
+        return isCharging ? .spring(response: 0.45, dampingFraction: 0.6) : .easeOut(duration: 0.28)
     }
 
     static func color(percent: Int, isCharging: Bool) -> Color {
@@ -33,18 +34,19 @@ struct BatteryGlyph: View {
                     .fill(color)
                     .padding(width * 0.07)
                     .frame(width: max(width * 0.16, width * fraction))
-                    .animation(.easeInOut(duration: 0.45), value: color)
+                    .animation(.easeInOut(duration: 0.4), value: color)
                     .animation(.easeInOut(duration: 0.6), value: fraction)
-                if isCharging {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: height * 0.72, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.6), radius: 1)
-                        .frame(maxWidth: .infinity)
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.2).combined(with: .opacity))
-                }
+                // Always in the hierarchy and animated by scale/opacity, so it never pops
+                // while the surrounding peek is itself animating in or out.
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: height * 0.72, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.6), radius: 1)
+                    .frame(maxWidth: .infinity)
+                    .scaleEffect(isCharging || reduceMotion ? 1 : 0.3)
+                    .opacity(isCharging ? 1 : 0)
+                    .animation(boltAnimation, value: isCharging)
             }
-            .animation(chargeAnimation, value: isCharging)
             .frame(width: width, height: height)
             RoundedRectangle(cornerRadius: 1)
                 .fill(Color.white.opacity(0.45))
@@ -99,7 +101,7 @@ struct DevicesRowView: View {
                     Image(systemName: "laptopcomputer")
                         .font(.system(size: 12))
                         .foregroundStyle(.white.opacity(0.6))
-                    BatteryGlyph(percent: power.percent, isCharging: power.isCharging, width: 22)
+                    BatteryGlyph(percent: power.percent, isCharging: power.showsChargingStyle, width: 22)
                     Text("\(power.percent)%")
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.8))
