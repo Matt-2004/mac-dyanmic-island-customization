@@ -257,3 +257,34 @@ or `xcodegen generate && open Isle.xcodeproj`, then Run (⌘R).
 ### Cannot be fixed in code
 - Focus / DND: nothing is drawn, so Accessibility sees nothing (use the usernoted fallback).
 - AirPods battery freshness is limited by how often macOS updates `system_profiler`.
+
+## Background service ✅ verified on this Mac (launchd restart + reinstall); visuals unchanged
+
+User request: run Isle like a built-in macOS service instead of an app you have to open.
+
+### Done
+- Launch agent `com.wai.Isle.agent` shipped inside the bundle (`Contents/Library/LaunchAgents`), registered
+  with `SMAppService.agent`: `RunAtLoad`, `KeepAlive { SuccessfulExit = false }` (crash → restart, Quit →
+  stays off until next login), `LimitLoadToSessionType Aqua`, `ProcessType Interactive`.
+- Registered automatically on launch when Isle runs from `/Applications` (never from DerivedData).
+  The old `SMAppService.mainApp` login item is removed, so Isle can't start twice at login.
+- `SingleInstance`: the service instance asks other copies to quit (distributed notification, then
+  force-quit after 4 s); opening the installed app while Isle runs shows Settings in the running copy.
+- Settings → General: *Run Isle as a background service* (with live status / approval button),
+  *Show icon in menu bar*.
+- `scripts/install.sh`: atomic swap of `/Applications/Isle.app`, then `launchctl kickstart -k` if the
+  service exists, otherwise first launch registers it.
+- Unit tests no longer write into the real `isle.log`.
+
+### Verified here
+- First install: app registered the service, launchd started it (`launchctl print` → running), and
+  Accessibility was still trusted.
+- `kill -9` of the service → launchd restarted it (runs = 2). Reinstall → restarted on the new build (runs = 3).
+
+### How to test
+1. Stop the Xcode-run copy (⌘. in Xcode), which is older code that doesn't answer the quit request.
+2. Log out and back in (or restart): the island is there without opening anything.
+3. Settings → General shows *Running as a background service*. Toggle *Show icon in menu bar* off,
+   then open Isle from Spotlight → Settings appears.
+4. *Quit Isle* → it stays off until next login. Restart now with
+   `launchctl kickstart gui/$(id -u)/com.wai.Isle.agent`.

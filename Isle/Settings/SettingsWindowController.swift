@@ -8,11 +8,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let settings: AppSettings
     private let notifications: NotificationCoordinator
     private let devices: DevicesCoordinator
+    private let backgroundService: BackgroundService
     private let showOnboarding: () -> Void
     private var window: NSWindow?
 
     init(settings: AppSettings, notifications: NotificationCoordinator, devices: DevicesCoordinator,
-         showOnboarding: @escaping () -> Void) {
+         backgroundService: BackgroundService, showOnboarding: @escaping () -> Void) {
+        self.backgroundService = backgroundService
         self.settings = settings
         self.notifications = notifications
         self.devices = devices
@@ -27,7 +29,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let hosting = NSHostingController(rootView: SettingsView(settings: settings, notifications: notifications, devices: devices, showOnboarding: showOnboarding))
+        let hosting = NSHostingController(rootView: SettingsView(settings: settings, notifications: notifications, devices: devices, backgroundService: backgroundService, showOnboarding: showOnboarding))
         let window = NSWindow(contentViewController: hosting)
         window.title = "Isle Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]

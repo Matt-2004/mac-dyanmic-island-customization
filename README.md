@@ -18,15 +18,26 @@ brew install xcodegen
 
 Or `xcodegen generate && open Isle.xcodeproj`, choose the **Isle** scheme, and press ⌘R.
 
-For daily use, install a Release build into `/Applications`:
+### Install as a background service
 
 ```sh
-./scripts/install.sh        # Release build → /Applications/Isle.app → launch
+./scripts/install.sh        # Release build → /Applications/Isle.app → background service
 ```
 
-After the first install, turn *Launch Isle at login* off and on again in Settings so the login item
-points at `/Applications/Isle.app` (not a DerivedData build). The Accessibility, Automation and
-Bluetooth grants carry over because the signing identity is the same.
+Isle then runs as a per-user **launchd agent** (`com.wai.Isle.agent`, registered with
+`SMAppService.agent`). You never open it: launchd starts it at login and restarts it within seconds
+if it crashes. *Quit Isle* in the menu stops it until the next login. Running `install.sh` again
+replaces the app and restarts the service on the new build. The Accessibility, Automation and
+Bluetooth grants carry over because the signing identity stays the same.
+
+- Turn it off: Settings → General → *Run Isle as a background service* (this quits Isle).
+  It also appears in System Settings → General → Login Items → *Allow in the Background*.
+- Hide the menu bar icon: Settings → General → *Show icon in menu bar*. Opening Isle from
+  Applications or Spotlight while it runs then just shows Settings.
+- Only one Isle runs at a time: the service instance asks any other copy to quit. A Debug build
+  started from Xcode takes over from the service; stop it with ⌘. in Xcode, then run
+  `launchctl kickstart gui/$(id -u)/com.wai.Isle.agent` (or log out and in) to bring the service back.
+- Status: `launchctl print gui/$(id -u)/com.wai.Isle.agent`.
 
 Tests (30 unit tests: priority queue, banner parser, battery/power/icon/artwork/usernoted parsers):
 
@@ -74,13 +85,13 @@ short fade instead of a spring, content crossfades, and the equalizer bars stop 
 | **Full Disk Access** *(optional)* | Only for the usernoted fallback (off by default) | System Settings → Privacy & Security → Full Disk Access → add Isle. |
 | **Bluetooth** | AirPods connect / disconnect | Prompted at first launch. If denied, *Set Up AirPods…* in the menu bar menu. |
 | **Automation → Spotify** *(optional)* | Same as Music, for Spotify | Prompted the first time Spotify plays while Isle is open. |
-| **Login Items** *(optional)* | Launch at login | Settings → General → *Launch Isle at login*. macOS may ask you to approve it in Login Items. |
+| **Background item** | Run as a service | Registered automatically from `/Applications`. macOS shows a "Background Items Added" notice; if it is switched off in Login Items → *Allow in the Background*, Settings shows *Waiting for approval*. |
 
 Isle is not sandboxed (needed for Apple Events to Music and Accessibility access to another process).
 
 ## Settings
 
-- **General**: launch at login, Spotify on/off, look up missing covers online, hover delay, hide in
+- **General**: background service on/off and status, menu bar icon, Spotify on/off, look up missing covers online, hover delay, hide in
   full-screen apps, Reduce Motion status.
 - **Notifications**: on/off, Accessibility status, close the system banner, peek duration, recent
   notifications (last 20, memory only — open, dismiss, block app), blocked apps (Unblock, *Add App…*),

@@ -21,6 +21,13 @@ targets:
     platform: macOS
     sources:
       - path: Isle
+        excludes:
+          - LaunchAgent
+      - path: Isle/LaunchAgent/com.wai.Isle.agent.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchAgents
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wai.Isle

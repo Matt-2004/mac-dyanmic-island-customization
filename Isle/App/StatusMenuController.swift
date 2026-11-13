@@ -45,6 +45,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         statusItem.menu = menu
     }
 
+    func setVisible(_ visible: Bool) {
+        statusItem.isVisible = visible
+    }
+
     private func buildMenu() {
         menu.delegate = self
         menu.autoenablesItems = false

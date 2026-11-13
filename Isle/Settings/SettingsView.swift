@@ -4,11 +4,12 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     let notifications: NotificationCoordinator
     let devices: DevicesCoordinator
+    let backgroundService: BackgroundService
     let showOnboarding: () -> Void
 
     var body: some View {
         TabView {
-            GeneralSettingsView(settings: settings)
+            GeneralSettingsView(settings: settings, service: backgroundService)
                 .tabItem { Label("General", systemImage: "gearshape") }
             NotificationSettingsView(settings: settings, coordinator: notifications, showOnboarding: showOnboarding)
                 .tabItem { Label("Notifications", systemImage: "bell") }
@@ -24,29 +25,38 @@ struct SettingsView: View {
 
 private struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
-    @StateObject private var launchAtLogin = LaunchAtLogin()
+    @ObservedObject var service: BackgroundService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Form {
-            Section("Startup") {
-                Toggle("Launch Isle at login", isOn: Binding(
-                    get: { launchAtLogin.isEnabled || launchAtLogin.requiresApproval },
-                    set: { launchAtLogin.setEnabled($0) }
-                ))
-                if launchAtLogin.requiresApproval {
+            Section("Background service") {
+                Toggle("Run Isle as a background service", isOn: $settings.runAsService)
+                    .disabled(!BackgroundService.isInstalledInApplications)
+                Text("Starts by itself when you log in and restarts if it crashes — you never need to open it. Turning this off quits Isle.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent("Status") {
+                    Text(service.status.displayText)
+                        .foregroundStyle(service.status == .running ? .green : .secondary)
+                }
+                if service.status == .requiresApproval {
                     HStack {
-                        Text("Approve Isle in Login Items to finish enabling.")
+                        Text("Allow Isle under “Allow in the Background”.")
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("Open Login Items") { launchAtLogin.openLoginItemsSettings() }
+                        Button("Open Login Items") { service.openLoginItemsSettings() }
                     }
                 }
-                if let error = launchAtLogin.lastError {
+                if let error = service.lastError {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
+                Toggle("Show icon in menu bar", isOn: $settings.showMenuBarIcon)
+                Text("When the icon is hidden, open Isle from Applications or Spotlight to get to Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .onAppear { launchAtLogin.refresh() }
+            .onAppear { service.refresh() }
 
             Section("Music") {
                 Toggle("Also follow Spotify", isOn: $settings.spotifyEnabled)

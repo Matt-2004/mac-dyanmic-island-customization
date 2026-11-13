@@ -25,6 +25,8 @@ final class AppSettings: ObservableObject {
         static let spotifyEnabled = "spotifyEnabled"
         static let fetchMissingArtwork = "fetchMissingArtwork"
         static let hideInFullScreen = "hideInFullScreen"
+        static let runAsService = "runAsService"
+        static let showMenuBarIcon = "showMenuBarIcon"
     }
 
     private let defaults: UserDefaults
@@ -116,6 +118,16 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hideInFullScreen, forKey: Key.hideInFullScreen) }
     }
 
+    /// Run as a launchd agent: start at login, restart after a crash.
+    @Published var runAsService: Bool {
+        didSet { defaults.set(runAsService, forKey: Key.runAsService) }
+    }
+
+    /// When off, Isle has no menu bar icon; opening Isle.app again shows Settings.
+    @Published var showMenuBarIcon: Bool {
+        didSet { defaults.set(showMenuBarIcon, forKey: Key.showMenuBarIcon) }
+    }
+
     func isBlocked(_ key: String) -> Bool {
         blockedApps.contains(key)
     }
@@ -149,7 +161,9 @@ final class AppSettings: ObservableObject {
             Key.closeSystemBanners: false,
             Key.spotifyEnabled: true,
             Key.fetchMissingArtwork: true,
-            Key.hideInFullScreen: true
+            Key.hideInFullScreen: true,
+            Key.runAsService: true,
+            Key.showMenuBarIcon: true
         ])
         hoverDelay = defaults.double(forKey: Key.hoverDelay)
         peekDuration = defaults.double(forKey: Key.peekDuration)
@@ -169,5 +183,7 @@ final class AppSettings: ObservableObject {
         spotifyEnabled = defaults.bool(forKey: Key.spotifyEnabled)
         fetchMissingArtwork = defaults.bool(forKey: Key.fetchMissingArtwork)
         hideInFullScreen = defaults.bool(forKey: Key.hideInFullScreen)
+        runAsService = defaults.bool(forKey: Key.runAsService)
+        showMenuBarIcon = defaults.bool(forKey: Key.showMenuBarIcon)
     }
 }

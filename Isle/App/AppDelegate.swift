@@ -13,11 +13,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboarding: AccessibilityOnboardingWindowController?
     private var windowController: NotchWindowController?
     private var statusMenu: StatusMenuController?
+    private let backgroundService = BackgroundService()
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let mode = BackgroundService.isServiceInstance ? "service" : "app"
+        FileLog.write("launch: Isle \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") pid \(ProcessInfo.processInfo.processIdentifier) as \(mode) from \(Bundle.main.bundlePath)")
+
+        switch SingleInstance.decide() {
+        case .proceed:
+            start()
+        case .waitForOthers(let others):
+            FileLog.write("instance: asking \(others.count) running copy(ies) to quit")
+            SingleInstance.askOthersToQuit()
+            SingleInstance.waitUntilGone(others) { [weak self] in self?.start() }
+        case .exitAfterShowingSettings:
+            // Register the service first if needed (e.g. the running copy is a development
+            // build); launchd's instance then takes over from every other copy.
+            backgroundService.applyPreference(settings.runAsService)
+            FileLog.write("instance: already running; showing its Settings")
+            SingleInstance.askRunningCopyToShowSettings()
+            NSApp.terminate(nil)
+        }
+    }
+
+    private func start() {
+        SingleInstance.listen { [weak self] in self?.settingsWindow?.show() }
+        backgroundService.applyPreference(settings.runAsService)
+        settings.$runAsService
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] wanted in self?.backgroundService.setEnabled(wanted) }
+            .store(in: &cancellables)
+
         store.debugController = debugPlayer
-        FileLog.write("launch: Isle \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") pid \(ProcessInfo.processInfo.processIdentifier)")
 
         let musicService = MusicService { [weak self] nowPlaying in
             self?.store.updateLiveNowPlaying(nowPlaying)
@@ -50,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settings: settings,
             notifications: notifications,
             devices: devices,
+            backgroundService: backgroundService,
             showOnboarding: { onboarding.show() }
         )
         notifications.startIfPossible()
@@ -70,6 +100,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings: { [weak self] in self?.settingsWindow?.show() },
             showOnboarding: { onboarding.show() }
         )
+        settings.$showMenuBarIcon
+            .removeDuplicates()
+            .sink { [weak self] visible in self?.statusMenu?.setVisible(visible) }
+            .store(in: &cancellables)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

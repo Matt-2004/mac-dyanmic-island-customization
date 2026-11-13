@@ -11,7 +11,11 @@ enum FileLog {
             .appendingPathComponent("Library/Logs/Isle/isle.log")
     }
 
+    /// Unit tests run inside the app; keep their fake events out of the real log.
+    private static let isDisabled = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     static func write(_ message: String) {
+        guard !isDisabled else { return }
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
         queue.async {
             let fileManager = FileManager.default
