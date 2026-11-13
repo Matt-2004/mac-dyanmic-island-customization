@@ -349,3 +349,7 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
   uses `isPluggedIn` (`PowerSnapshot.showsChargingStyle`), like the menu bar battery.
 - Smoother: the bolt stays in the view tree and animates scale/opacity (spring in, 0.28 s ease-out away, no
   bounce on unplug); the peek waits 0.5 s (until it has finished opening) before animating the change.
+- Fix (user report: label said "Plugged in, not charging" while the icon showed charging): for 15 s after
+  plug-in, "AC power but not charging yet" is labelled "Charging…" (`isStartingToCharge`), and the battery is
+  re-read at 0.5/1/2/3/5/8/12/15.5 s after plug-in (stops once charging is confirmed) so the real status and
+  time to full replace it quickly. After 15 s a genuine pause/limit still reads "Plugged in, not charging".

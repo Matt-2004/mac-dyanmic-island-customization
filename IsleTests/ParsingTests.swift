@@ -97,6 +97,24 @@ final class PowerTests: XCTestCase {
     }
 
     @MainActor
+    func testJustPluggedInReadsAsStartingToCharge() {
+        let service = PowerService()
+        func reading(plugged: Bool, charging: Bool) -> PowerSnapshot {
+            PowerSnapshot(percent: 77, isCharging: charging, isPluggedIn: plugged, isCharged: false,
+                          minutesToFull: charging ? 48 : nil, minutesToEmpty: nil)
+        }
+        service.apply(reading(plugged: false, charging: false), now: 100)
+        service.apply(reading(plugged: true, charging: false), now: 101)
+        XCTAssertEqual(service.snapshot?.isStartingToCharge, true)
+        XCTAssertEqual(service.snapshot?.statusText, "Charging…")
+        service.apply(reading(plugged: true, charging: true), now: 104)
+        XCTAssertEqual(service.snapshot?.statusText, "Charging, 48m to full")
+        // Still not charging long after plug-in (charge limit / paused): say so.
+        service.apply(reading(plugged: true, charging: false), now: 101 + PowerService.chargeStartGrace + 1)
+        XCTAssertEqual(service.snapshot?.statusText, "Plugged in, not charging")
+    }
+
+    @MainActor
     func testNoLowBatteryWhilePluggedIn() {
         let service = PowerService()
         var events: [PowerEvent] = []

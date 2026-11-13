@@ -19,6 +19,7 @@ final class PowerService {
     private(set) var isCharged = false
     private(set) var minutesToFull: Int?
     private(set) var minutesToEmpty: Int?
+    private(set) var isStartingToCharge = false
 
     var snapshot: PowerSnapshot? {
         guard hasBattery else { return nil }
@@ -28,7 +29,8 @@ final class PowerService {
             isPluggedIn: isPluggedIn,
             isCharged: isCharged,
             minutesToFull: minutesToFull,
-            minutesToEmpty: minutesToEmpty
+            minutesToEmpty: minutesToEmpty,
+            isStartingToCharge: isStartingToCharge
         )
     }
 
@@ -43,6 +45,11 @@ final class PowerService {
     @ObservationIgnored private var warnedAt20 = false
     @ObservationIgnored private var warnedAt10 = false
     @ObservationIgnored private var announcedFull = false
+    /// When the charger was last connected (system uptime).
+    @ObservationIgnored private var pluggedInAt: TimeInterval?
+    @ObservationIgnored private var followUps: [DispatchWorkItem] = []
+    /// How long after plug-in "connected but not charging yet" counts as starting to charge.
+    static let chargeStartGrace: TimeInterval = 15
 
     func start() {
         guard runLoopSource == nil else { return }
@@ -81,13 +88,14 @@ final class PowerService {
     // MARK: Private
 
     /// Applies a reading and emits transitions. Internal so tests can feed readings.
-    func apply(_ reading: PowerSnapshot?) {
-        guard let reading else {
+    func apply(_ newReading: PowerSnapshot?, now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        guard var reading = newReading else {
             hasBattery = false
             previous = nil
             onChange?(nil)
             return
         }
+        trackChargeStart(&reading, now: now)
         hasBattery = true
         percent = reading.percent
         isCharging = reading.isCharging
@@ -95,6 +103,7 @@ final class PowerService {
         isCharged = reading.isCharged
         minutesToFull = reading.minutesToFull
         minutesToEmpty = reading.minutesToEmpty
+        isStartingToCharge = reading.isStartingToCharge
         onChange?(reading)
 
         defer { previous = reading }
@@ -106,6 +115,45 @@ final class PowerService {
             return
         }
         detectTransitions(from: previous, to: reading)
+    }
+
+    /// After plug-in macOS reports "AC power, not charging" for a few seconds before it starts
+    /// charging. Label that window as starting to charge, and re-read a few times so the real
+    /// state (and time to full) shows up quickly instead of at the next system notification.
+    private func trackChargeStart(_ reading: inout PowerSnapshot, now: TimeInterval) {
+        let wasPluggedIn = previous?.isPluggedIn ?? reading.isPluggedIn
+        if reading.isPluggedIn, !wasPluggedIn {
+            pluggedInAt = now
+            scheduleFollowUps()
+        } else if !reading.isPluggedIn {
+            pluggedInAt = nil
+            cancelFollowUps()
+        }
+        if reading.isPluggedIn, !reading.isCharging, !reading.isCharged, reading.percent < 100,
+           let pluggedInAt, now - pluggedInAt < Self.chargeStartGrace {
+            reading.isStartingToCharge = true
+        }
+        if reading.isCharging || reading.isCharged {
+            if !followUps.isEmpty, let pluggedInAt {
+                FileLog.write(String(format: "power: charging confirmed %.1f s after plug-in", now - pluggedInAt))
+            }
+            cancelFollowUps()
+        }
+    }
+
+    private func scheduleFollowUps() {
+        cancelFollowUps()
+        // Cheap IOKit reads; stop as soon as charging is confirmed.
+        followUps = [0.5, 1, 2, 3, 5, 8, 12, Self.chargeStartGrace + 0.5].map { delay in
+            let work = DispatchWorkItem { [weak self] in self?.refresh() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+            return work
+        }
+    }
+
+    private func cancelFollowUps() {
+        followUps.forEach { $0.cancel() }
+        followUps.removeAll()
     }
 
     private func detectTransitions(from old: PowerSnapshot, to new: PowerSnapshot) {

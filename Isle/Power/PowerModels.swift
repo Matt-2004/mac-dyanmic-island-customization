@@ -10,6 +10,9 @@ struct PowerSnapshot: Equatable {
     var minutesToFull: Int?
     /// nil while calculating, or when on AC power.
     var minutesToEmpty: Int?
+    /// The charger was just connected and macOS hasn't switched to "charging" yet (it takes a
+    /// few seconds). Shown as "Charging…" instead of "not charging".
+    var isStartingToCharge = false
 
     /// Draw the battery as charging (green + bolt) as soon as the charger is connected, like
     /// the macOS menu bar. macOS reports "plugged in" at once but "charging" only a few
@@ -18,7 +21,7 @@ struct PowerSnapshot: Equatable {
 
     /// ", charging" / ", plugged in" / "" for accessibility labels.
     var chargeDescription: String {
-        isCharging ? ", charging" : (isPluggedIn ? ", plugged in" : "")
+        isCharging || isStartingToCharge ? ", charging" : (isPluggedIn ? ", plugged in" : "")
     }
 
     /// "Charging, 1h 20m to full", "Fully charged", "Unplugged", …
@@ -31,6 +34,7 @@ struct PowerSnapshot: Equatable {
                 }
                 return "Charging"
             }
+            if isStartingToCharge { return "Charging…" }
             return "Plugged in, not charging"
         }
         if let minutes = minutesToEmpty, minutes > 0 {
