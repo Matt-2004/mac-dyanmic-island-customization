@@ -1,0 +1,83 @@
+name: Isle
+options:
+  bundleIdPrefix: com.wai
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    DEVELOPMENT_TEAM: G9BDJ48H5Z
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  Isle:
+    type: application
+    platform: macOS
+    sources:
+      - path: Isle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wai.Isle
+        PRODUCT_NAME: Isle
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_ENTITLEMENTS: Isle/Resources/Isle.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+        SWIFT_STRICT_CONCURRENCY: minimal
+    info:
+      path: Isle/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Isle
+        CFBundleName: Isle
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.utilities
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSUIElement: true
+        NSHumanReadableCopyright: ""
+        NSAppleEventsUsageDescription: Isle controls Apple Music and reads the current track so it can show playback in the notch.
+        NSBluetoothAlwaysUsageDescription: Isle shows when your AirPods connect or disconnect and displays their battery levels in the notch.
+    entitlements:
+      path: Isle/Resources/Isle.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.automation.apple-events: true
+
+  IsleTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: IsleTests
+    dependencies:
+      - target: Isle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wai.IsleTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Isle.app/Contents/MacOS/Isle
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_STRICT_CONCURRENCY: minimal
+
+schemes:
+  Isle:
+    build:
+      targets:
+        Isle: all
+        IsleTests: [test]
+    test:
+      config: Debug
+      targets:
+        - IsleTests
+    run:
+      config: Debug
+    archive:
+      config: Release

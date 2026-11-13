@@ -1,0 +1,129 @@
+import XCTest
+@testable import Isle
+
+@MainActor
+final class IslandStateStoreTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var settings: AppSettings!
+    private var store: IslandStateStore!
+
+    override func setUp() async throws {
+        let suite = "IsleTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+        settings = AppSettings(defaults: defaults)
+        store = IslandStateStore(settings: settings)
+    }
+
+    private func track(playing: Bool) -> NowPlaying {
+        NowPlaying(trackID: "t", title: "Song", artist: "Artist", album: "", duration: 200, position: 10,
+                   positionTimestamp: Date(), isPlaying: playing, artwork: nil, accentColor: nil)
+    }
+
+    private func power(charging: Bool, percent: Int = 50) -> PowerSnapshot {
+        PowerSnapshot(percent: percent, isCharging: charging, isPluggedIn: charging, isCharged: false,
+                      minutesToFull: charging ? 60 : nil, minutesToEmpty: nil)
+    }
+
+    private func airpodsPeek(age: TimeInterval = 0) -> PeekItem {
+        let device = AudioDevice(id: "A", name: "AirPods", kind: .airpods, battery: nil, isConnected: true)
+        return PeekItem(content: .airpods(AirPodsPeekInfo(device: device, connected: true)), kind: .airpods,
+                        duration: 3, createdAt: Date().addingTimeInterval(-age))
+    }
+
+    private func powerPeek(_ event: PowerEvent = .pluggedIn, age: TimeInterval = 0) -> PeekItem {
+        PeekItem(content: .power(event: event, snapshot: power(charging: true), isLive: false),
+                 kind: event.isCritical ? .criticalPower : .power, duration: 3,
+                 createdAt: Date().addingTimeInterval(-age))
+    }
+
+    private func notification(_ title: String = "Hi") -> IslandNotification {
+        IslandNotification(bundleIdentifier: "com.apple.MobileSMS", appName: "Messages", title: title)
+    }
+
+    func testIdleCompactAndPaused() {
+        XCTAssertEqual(store.state, .idle)
+        store.updateLiveNowPlaying(track(playing: true))
+        XCTAssertEqual(store.state, .compact)
+        store.updateLiveNowPlaying(track(playing: false))
+        XCTAssertEqual(store.state, .idle, "paused music goes idle")
+    }
+
+    func testChargingShowsCompactOnlyWhenEnabled() {
+        store.updatePower(power(charging: true))
+        XCTAssertEqual(store.state, .compact)
+        settings.chargingIndicatorEnabled = false
+        store.updatePower(power(charging: true, percent: 51))
+        XCTAssertEqual(store.state, .idle)
+    }
+
+    func testNotificationPreemptsAirPodsWhichIsRestored() {
+        store.updateLiveNowPlaying(track(playing: true))
+        store.present(airpodsPeek())
+        XCTAssertEqual(store.state, .airpodsPeek)
+        store.presentPeek(notification())
+        XCTAssertEqual(store.state, .peek)
+        store.dismissPeek()
+        XCTAssertEqual(store.state, .airpodsPeek, "pre-empted AirPods peek comes back")
+        store.dismissPeek()
+        XCTAssertEqual(store.state, .compact, "music restored afterwards")
+    }
+
+    func testLowerPriorityWaitsBehindHigher() {
+        store.present(airpodsPeek())
+        store.present(powerPeek())
+        XCTAssertEqual(store.state, .airpodsPeek, "power does not interrupt AirPods")
+        store.dismissPeek()
+        XCTAssertEqual(store.state, .powerPeek)
+    }
+
+    func testCriticalBatteryBeatsAirPodsButNotNotification() {
+        store.presentPeek(notification())
+        store.present(powerPeek(.lowBattery(threshold: 10)))
+        XCTAssertEqual(store.state, .peek, "notification keeps priority")
+        store.present(airpodsPeek())
+        store.dismissPeek()
+        XCTAssertEqual(store.state, .powerPeek, "critical battery comes before AirPods")
+        if case .power(let event, _, _)? = store.activePeek?.content {
+            XCTAssertEqual(event, .lowBattery(threshold: 10))
+        } else {
+            XCTFail("expected the critical power peek")
+        }
+    }
+
+    func testQueueIsCappedAtThree() {
+        store.presentPeek(notification("first"))
+        for _ in 0..<5 {
+            store.present(powerPeek())
+        }
+        var shown = 0
+        while store.activePeek != nil {
+            store.dismissPeek()
+            if store.activePeek != nil { shown += 1 }
+        }
+        XCTAssertEqual(shown, IslandStateStore.maxQueuedPeeks)
+    }
+
+    func testStalePeeksAreDropped() {
+        store.presentPeek(notification())
+        store.present(powerPeek(age: 30))
+        store.dismissPeek()
+        XCTAssertNil(store.activePeek, "a peek older than 10 s is not shown")
+        XCTAssertEqual(store.state, .idle)
+    }
+
+    func testClickOnPowerPeekDismisses() {
+        store.present(powerPeek())
+        store.handleClick()
+        XCTAssertNil(store.activePeek)
+    }
+
+    func testClickOnNotificationPeekOpensApp() {
+        var opened: IslandNotification?
+        store.openNotificationHandler = { opened = $0 }
+        let item = notification("Open me")
+        store.presentPeek(item)
+        store.handleClick()
+        XCTAssertEqual(opened?.title, "Open me")
+        XCTAssertNil(store.activePeek)
+    }
+}
