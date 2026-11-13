@@ -33,6 +33,9 @@ final class AccessibilityNotificationSource: NotificationSource {
     /// Identities are per-notification, so this never hides a *new* identical message
     /// (unless macOS gives a banner no identifier, where content is the fallback identity).
     private var recentlySeen: [String: Date] = [:]
+    /// Desktop widget windows (Clock, Weather, …) also belong to NotificationCenter. They are
+    /// classified once and skipped, so a scan reads only the banner window. Worker thread only.
+    private var widgetWindowCache: [AXUIElement: Bool] = [:]
     private let recentWindow: TimeInterval = 600
     private var hasSeeded = false
     private var scanScheduled = false
@@ -210,7 +213,7 @@ final class AccessibilityNotificationSource: NotificationSource {
     private func scheduleScan() {
         guard !scanScheduled else { return }
         scanScheduled = true
-        worker.perform(after: 0.15) { [weak self] in
+        worker.perform(after: 0.05) { [weak self] in
             self?.scanScheduled = false
             self?.scan()
         }
@@ -223,7 +226,24 @@ final class AccessibilityNotificationSource: NotificationSource {
         }
         guard let app = appElement else { return }
 
-        let banners = BannerParser.banners(in: app)
+        let banners: [ParsedBanner]
+        if dumpEnabled {
+            banners = BannerParser.banners(in: app)
+        } else {
+            let windows = AX.elements(app, kAXWindowsAttribute)
+            var cache: [AXUIElement: Bool] = [:]
+            var bannerWindows: [AXUIElement] = []
+            for window in windows {
+                let isWidget = widgetWindowCache[window] ?? Self.isWidgetWindow(window)
+                cache[window] = isWidget
+                if !isWidget { bannerWindows.append(window) }
+            }
+            widgetWindowCache = cache
+            banners = bannerWindows.isEmpty ? [] : BannerParser.banners(
+                inWindows: bannerWindows.map { AXNode.capture($0) },
+                resolveBundleID: AppNameResolver.bundleIdentifier(forAppName:)
+            )
+        }
 
         if dumpEnabled {
             dumper.dumpIfChanged(root: app, reason: "tree changed", extra: BannerParser.summary(banners))
@@ -272,6 +292,19 @@ final class AccessibilityNotificationSource: NotificationSource {
                 closeSystemBanner(banner)
             }
         }
+    }
+
+    /// A desktop widget window: not the AXSystemDialog banner window, and a shallow look
+    /// finds a `widget-…` identifier (e.g. `widget-local:com.apple.clock:…`).
+    private static func isWidgetWindow(_ window: AXUIElement) -> Bool {
+        if AX.subrole(window) == "AXSystemDialog" { return false }
+        var level = [window]
+        for _ in 0..<3 {
+            level = level.flatMap { AX.children($0) }
+            if level.contains(where: { AX.identifier($0)?.hasPrefix("widget") == true }) { return true }
+            if level.isEmpty || level.count > 40 { return false }
+        }
+        return false
     }
 
     /// Closes the macOS banner as soon as it is detected, so only Isle's peek is seen.

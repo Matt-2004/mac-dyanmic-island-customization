@@ -159,9 +159,18 @@ final class NotchWindowController {
 
     private func observePointer() {
         let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .leftMouseDown]
+        // Global monitors are delivered on the main thread; skip the work entirely while the
+        // pointer is well below the island and nothing is hovered.
         if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] _ in
-            let location = NSEvent.mouseLocation
-            Task { @MainActor in self?.updateMouseHandling(at: location) }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let location = NSEvent.mouseLocation
+                if !self.store.isHovering, self.panel.ignoresMouseEvents,
+                   let screen = self.screen, location.y < screen.frame.maxY - self.panel.frame.height {
+                    return
+                }
+                self.updateMouseHandling(at: location)
+            }
         }) {
             monitors.append(global)
         }

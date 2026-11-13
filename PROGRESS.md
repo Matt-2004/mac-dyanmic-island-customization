@@ -299,3 +299,17 @@ User request: hide the macOS menu bar battery and always show battery % + icon r
 - Colors: white; green + bolt while charging; orange ≤ 20 %; red ≤ 10 %.
 - Updates only on `IOPSNotificationCreateRunLoopSource` callbacks; no timers or animation while idle.
 - To hide the macOS battery: System Settings → Control Center → Battery → Don't Show in Menu Bar.
+
+## Efficiency pass ✅ measured on this Mac
+
+| | Before | After |
+|---|---|---|
+| Idle CPU (12 s `top`) | 0.5–2.3 % | 0.0 % |
+| Memory | 35 MB | 34 MB |
+| Notification → peek | same second | same second (callback coalescing 150 → 50 ms) |
+
+- Root cause (from `sample`): every scan read the whole AX tree of the desktop widgets (Clock, Forecast,
+  Status) that live in the NotificationCenter process, and the clock widget's minute tick triggered extra scans.
+  Widget windows are now classified once (cached per window) and skipped; only the banner window is read.
+- Global mouse monitor: no Task allocation, early exit while the pointer is below the island.
+- Equalizer redraw 20 → 15 fps while music plays (nothing redraws while idle).
